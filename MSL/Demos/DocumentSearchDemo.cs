@@ -1,7 +1,4 @@
 ﻿using MSL.Data;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MSL.Demos
 {
@@ -9,18 +6,28 @@ namespace MSL.Demos
     {
         public static void Run()
         {
-            Console.Write("\nВведите ваш допуск (1 - Служебный, 2 - Секретно, 3 - Сов. Секретно): ");
-            string? level = Console.ReadLine();
-
+            Console.Write("\nЛогин сотрудника: ");
+            string? login = Console.ReadLine();
             Console.Write("Поисковый запрос по материалам: ");
             string? term = Console.ReadLine();
 
             using var connection = DatabaseContext.CreateConnection();
-            using var command = connection.CreateCommand();
 
-            // ОШИБКА 1: Уровень допуска передается напрямую от клиента 
-            // ОШИБКА 2: Вторая SQL-инъекция в LIKE: можно закомментировать условие допуска (-- или /*)
-            command.CommandText = $"SELECT id, title, secret_level, content FROM ClassifiedDocuments WHERE secret_level <= {level} AND title LIKE '%{term}%'";
+            using var levelCommand = connection.CreateCommand();
+            levelCommand.CommandText = "SELECT clearance_level FROM Employees WHERE login = $login";
+            levelCommand.Parameters.AddWithValue("$login", login ?? "");
+            var level = levelCommand.ExecuteScalar();
+            if (level is null)
+            {
+                Console.WriteLine("\n[ОТКАЗ] Сотрудник не найден.");
+                return;
+            }
+
+            using var command = connection.CreateCommand();
+            command.CommandText =
+                "SELECT id, title, secret_level, content FROM ClassifiedDocuments WHERE secret_level <= $level AND title LIKE $term";
+            command.Parameters.AddWithValue("$level", level);
+            command.Parameters.AddWithValue("$term", "%" + (term ?? "") + "%");
 
             try
             {
@@ -35,10 +42,9 @@ namespace MSL.Demos
                 }
                 if (!found) Console.WriteLine("Документы не найдены.");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                // ОШИБКА 3: Утечка внутренней структуры базы в сообщении об ошибке (Information Disclosure)
-                Console.WriteLine($"[CRITICAL DB ERROR]: {ex.Message}");
+                Console.WriteLine("[ОШИБКА] Не удалось выполнить поиск.");
             }
         }
     }

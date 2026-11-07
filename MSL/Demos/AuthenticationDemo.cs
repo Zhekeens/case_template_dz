@@ -1,7 +1,4 @@
 ﻿using MSL.Data;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MSL.Demos
 {
@@ -15,13 +12,14 @@ namespace MSL.Demos
             string? password = Console.ReadLine();
 
             using var connection = DatabaseContext.CreateConnection();
-
-            // ОШИБКА 1: Конкатенация строк в SQL
-            // ОШИБКА 2: Потенциальный перехват паролей (логирование открытого пароля в консоль/дамп)
-            string sql = $"SELECT full_name, clearance_level, department_name FROM Employees WHERE login = '{login}' AND password = '{password}'";
-
             using var command = connection.CreateCommand();
-            command.CommandText = sql;
+            command.CommandText =
+                "SELECT e.full_name, e.clearance_level, d.name AS department_name " +
+                "FROM Employees e " +
+                "JOIN Departments d ON d.id = e.department_id " +
+                "WHERE e.login = $login AND e.password = $password";
+            command.Parameters.AddWithValue("$login", login ?? "");
+            command.Parameters.AddWithValue("$password", password ?? "");
 
             using var reader = command.ExecuteReader();
             if (reader.Read())

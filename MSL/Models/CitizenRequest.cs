@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MSL.Models
 {
@@ -9,7 +7,9 @@ namespace MSL.Models
         public int Id { get; set; }
         public string CitizenFio { get; set; } = string.Empty;
         public string RequestText { get; set; } = string.Empty;
+        [ForeignKey(nameof(AssignedEmployee))]
         public int? AssignedEmployeeId { get; set; }
+        public Employee? AssignedEmployee { get; set; }
         public string Status { get; set; } = "В обработке";
     }
 }
